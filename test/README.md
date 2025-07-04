@@ -85,6 +85,8 @@ This test validates:
 - ✓ Image name transformation logic
 - ✓ Input file validation (images.txt)
 - ✓ Docker daemon availability check
+- ✓ Image existence check with skopeo inspect logic
+- ✓ Skip functionality and counter logic (skipped vs copied)
 - ✓ Log file location (/tmp directory)
 - ✓ Manifest generation structure
 

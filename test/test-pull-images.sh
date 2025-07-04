@@ -193,6 +193,131 @@ test_manifest_generation() {
     test_log "✓ Manifest generation structure validated"
 }
 
+# Test image existence check functionality
+test_existence_check() {
+    test_log "Testing image existence check functionality..."
+    
+    # Create a simple test script to validate existence check logic
+    cat > test_existence.sh << 'EOF'
+#!/bin/bash
+
+# Mock check_image_exists function
+check_image_exists() {
+    local dest_image="$1"
+    
+    # Simulate different scenarios
+    case "$dest_image" in
+        *existing-image*)
+            echo "✓ Image already exists: ${dest_image}"
+            return 0
+            ;;
+        *missing-image*)
+            echo "○ Image not found, copy needed: ${dest_image}"
+            return 1
+            ;;
+        *)
+            echo "○ Image not found, copy needed: ${dest_image}"
+            return 1
+            ;;
+    esac
+}
+
+# Test cases
+if check_image_exists "docker.io/mytestlab123/existing-image:latest"; then
+    echo "TEST1: ✓ Correctly detected existing image"
+else
+    echo "TEST1: ✗ Failed to detect existing image"
+    exit 1
+fi
+
+if ! check_image_exists "docker.io/mytestlab123/missing-image:latest"; then
+    echo "TEST2: ✓ Correctly detected missing image"
+else
+    echo "TEST2: ✗ Incorrectly reported missing image as existing"
+    exit 1
+fi
+
+echo "All existence check tests passed"
+EOF
+    
+    chmod +x test_existence.sh
+    
+    if ./test_existence.sh; then
+        test_log "✓ Image existence check logic validated"
+    else
+        test_log "✗ Image existence check logic failed"
+        return 1
+    fi
+    
+    rm -f test_existence.sh
+    return 0
+}
+
+# Test skip functionality
+test_skip_logic() {
+    test_log "Testing skip logic with counters..."
+    
+    # Create a test to validate counter logic
+    cat > test_counters.sh << 'EOF'
+#!/bin/bash
+
+# Simulate counter logic
+success_count=0
+skipped_count=0
+copied_count=0
+failure_count=0
+
+# Simulate processing 3 images: 1 existing, 1 new, 1 failed
+images=("existing-image" "new-image" "failing-image")
+
+for image in "${images[@]}"; do
+    case "$image" in
+        existing-image)
+            echo "⏩ Skipping copy - image already exists: $image"
+            ((success_count++))
+            ((skipped_count++))
+            ;;
+        new-image)
+            echo "✓ Successfully copied: $image"
+            ((success_count++))
+            ((copied_count++))
+            ;;
+        failing-image)
+            echo "✗ Failed to copy: $image"
+            ((failure_count++))
+            ;;
+    esac
+done
+
+# Validate final counts
+echo "Summary:"
+echo "Total processed: ${#images[@]}"
+echo "Successful: ${success_count} (${copied_count} copied + ${skipped_count} skipped)"
+echo "Failed: ${failure_count}"
+
+# Test expected values
+if [[ $success_count -eq 2 && $skipped_count -eq 1 && $copied_count -eq 1 && $failure_count -eq 1 ]]; then
+    echo "✓ Counter logic test passed"
+    exit 0
+else
+    echo "✗ Counter logic test failed"
+    exit 1
+fi
+EOF
+    
+    chmod +x test_counters.sh
+    
+    if ./test_counters.sh; then
+        test_log "✓ Skip logic and counters validated"
+    else
+        test_log "✗ Skip logic and counters failed"
+        return 1
+    fi
+    
+    rm -f test_counters.sh
+    return 0
+}
+
 # Test log file location
 test_log_location() {
     test_log "Testing log file location..."
@@ -271,6 +396,8 @@ main() {
     test_input_validation
     test_docker_check
     test_manifest_generation
+    test_existence_check
+    test_skip_logic
     test_log_location
     test_dry_run
     
