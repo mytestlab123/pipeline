@@ -63,3 +63,5 @@ node_modules/
 .next/
 .nextflow/
 *.nextflow.log*
+work/
+offline-assets/

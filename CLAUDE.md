@@ -1,0 +1,148 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Nextflow Offline Execution Demo - MVP that enables running nf-core pipelines on AWS EC2 instances without internet access. The project implements a two-phase workflow: online preparation and offline execution.
+
+## Core Architecture
+
+### Two-Phase Workflow System
+The project follows a strict separation between online and offline phases:
+
+**Online Phase (Internet-connected machine):**
+- Downloads nf-core/demo pipeline assets from GitLab
+- Scans pipeline configuration to generate required Docker image lists
+- Pulls Docker images and saves to shared storage (S3 or Docker Hub)
+
+**Offline Phase (Private subnet, no internet):**
+- Loads pre-downloaded assets from shared storage
+- Loads Docker images from shared location
+- Executes pipeline with `-offline` flag
+
+### Key Components
+- **Shell Scripts**: Primary automation layer (5 core scripts)
+- **Docker/Podman**: Container runtime (constraint: prefer podman)
+- **Nextflow**: Workflow management system
+- **nf-core**: Pipeline framework targeting nf-core/demo initially
+
+## Development Commands
+
+### Testing
+```bash
+# Run environment smoke test
+./test/smoke-test.sh
+
+# Test with debug output
+bash -x test/smoke-test.sh
+```
+
+### MVP Development Workflow
+The project follows a structured MVP approach with 5 core deliverables:
+
+1. **online-prepare.sh** - Downloads pipeline assets on online machine
+2. **generate-image-list.sh** - Generates list of required Docker images
+3. **pull-images.sh** - Pulls Docker images and saves to shared location
+4. **offline-setup.sh** - Loads assets on offline machine
+5. **run-offline-pipeline.sh** - Runs pipeline with offline flag
+
+### Project Structure
+```
+├── plan.md              # Original project requirements
+├── issues.md            # Issue tracking (updated as development progresses)
+├── TODO.md              # Comprehensive task list and future enhancements
+├── docs/README.md       # Architecture documentation with ASCII diagrams
+└── test/
+    ├── smoke-test.sh    # Environment validation (executable)
+    └── README.md        # Testing instructions
+```
+
+## Technology Constraints
+
+### Required Tools
+- Linux/Shell Script environment
+- podman (preferred over docker)
+- Nextflow installation
+- AWS CLI (for S3 access)
+
+### Target Environment
+- AWS Cloud9 (Amazon Linux 2) for development
+- EC2 instances for online/offline phases
+- S3 buckets for asset storage
+- Docker Hub (mytestlab123 organization) for image hosting
+
+## Key Implementation Details
+
+### Target Pipeline
+Initially focused on nf-core/demo (version 1.0.2) as the reference implementation:
+- Repository: https://github.com/nf-core/demo/tree/1.0.2
+- Documentation: https://nf-co.re/demo/1.0.2/
+- Offline docs: https://nf-co.re/docs/usage/getting_started/offline
+
+### Asset Storage Strategy
+Two approaches supported:
+1. **S3 Bucket**: Shared storage for both pipeline assets and Docker images
+2. **Docker Hub**: Push/pull model using mytestlab123 organization account
+
+### Known Limitations
+- Internet dependency for initial online phase
+- Large storage requirements for Docker images (multi-GB)
+- Currently pipeline-specific (nf-core/demo focus)
+- Manual process with no automated end-to-end pipeline
+
+## Development Timeline
+- **MVP Target**: 2 hours for demo
+- **Developer Estimate**: 30 minutes using shell scripts and nf-core/demo
+- **Current Status**: MVP scaffolding complete, ready for script implementation
+
+## Issue Tracking
+All issues tracked in `issues.md` file (not GitHub issues). MVP scope defined in GitHub issue #1 and draft PR #2.
+
+## Future Enhancements
+Post-MVP considerations include multiple pipeline support, AWS Systems Manager integration, automated image optimization, and AWS Batch integration. See TODO.md for comprehensive future work list.
+
+### Next Step – July 4, 2025
+
+**Goal**: Implement the first core MVP script (online-prepare.sh) to download nf-core/demo pipeline assets and validate online phase functionality.
+
+**Deliverables**:
+- Create executable `online-prepare.sh` script that downloads nf-core/demo pipeline from GitHub
+- Implement asset validation and verification checks
+- Add logging and error handling for download failures
+- Create shared asset directory structure for S3/local storage
+- Test script functionality with nf-core/demo v1.0.2
+
+**Acceptance Criteria**:
+- Script successfully downloads nf-core/demo pipeline assets
+- Downloaded assets are organized in expected directory structure
+- Script provides clear success/failure feedback with logging
+- Script handles network connectivity issues gracefully
+- Documentation updated with script usage instructions
+
+**Risks / Assumptions**:
+- Assumes stable internet connectivity for nf-core/demo repository access
+- Assumes sufficient disk space for pipeline assets (typically <100MB)
+- Risk of GitHub rate limiting during development/testing
+- Assumes current nf-core/demo repository structure remains stable
+
+### Done – July 4, 2025
+
+**Completed**: Implemented online-prepare.sh script with full functionality and testing.
+
+**Deliverables Completed**:
+- ✓ Created executable `online-prepare.sh` script that downloads nf-core/demo pipeline v1.0.2
+- ✓ Implemented comprehensive asset validation and verification checks
+- ✓ Added robust logging and error handling for download failures
+- ✓ Created organized asset directory structure (offline-assets/)
+- ✓ Tested script functionality with full test suite validation
+- ✓ Added test-online-prepare.sh component test
+- ✓ Updated test/run.sh for comprehensive testing
+- ✓ Enhanced test documentation in test/README.md
+
+**Technical Details**:
+- Script handles internet connectivity validation and graceful error handling
+- Assets stored in `./offline-assets/` with organized subdirectories
+- Manifest generation provides complete asset inventory
+- Comprehensive logging to `offline-assets/online-prepare.log`
+- Full test coverage validates all functionality end-to-end
