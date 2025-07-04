@@ -30,6 +30,7 @@ error_exit() {
 
 # Create directory structure
 create_directories() {
+    rm -rf "${ASSETS_DIR}"
     log "Creating directory structure..."
     mkdir -p "${ASSETS_DIR}"
     mkdir -p "${PIPELINE_DIR}"

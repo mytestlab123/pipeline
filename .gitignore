@@ -65,3 +65,4 @@ node_modules/
 *.nextflow.log*
 work/
 offline-assets/
+.env

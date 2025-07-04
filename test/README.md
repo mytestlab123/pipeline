@@ -71,6 +71,23 @@ This test validates:
 - ✓ Image manifest creation
 - ✓ Expected image count validation
 
+### Pull Images Script Test
+Test the pull-images.sh script functionality:
+
+```bash
+chmod +x test/test-pull-images.sh
+./test/test-pull-images.sh
+```
+
+This test validates:
+- ✓ Script execution and permissions
+- ✓ Environment file (.env) loading and validation
+- ✓ Image name transformation logic
+- ✓ Input file validation (images.txt)
+- ✓ Docker daemon availability check
+- ✓ Log file location (/tmp directory)
+- ✓ Manifest generation structure
+
 ### Run All Tests
 Execute all available tests:
 
@@ -84,6 +101,7 @@ echo "Running all tests..."
 ./test/smoke-test.sh
 ./test/test-online-prepare.sh
 ./test/test-generate-image-list.sh
+./test/test-pull-images.sh
 echo "All tests completed successfully!"
 EOF
 
