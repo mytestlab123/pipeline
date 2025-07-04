@@ -98,6 +98,29 @@ transform_image_name() {
     echo "${dest_image}"
 }
 
+# Check if destination image already exists using Skopeo inspect
+check_image_exists() {
+    local dest_image="$1"
+    
+    log "Checking if image already exists: ${dest_image}"
+    
+    # Use Skopeo to inspect the destination image
+    local inspect_cmd=(
+        docker run --rm
+        "${SKOPEO_IMAGE}"
+        inspect
+        "docker://${dest_image}"
+    )
+    
+    if "${inspect_cmd[@]}" &> /dev/null; then
+        log "✓ Image already exists: ${dest_image}"
+        return 0
+    else
+        log "○ Image not found, copy needed: ${dest_image}"
+        return 1
+    fi
+}
+
 # Copy single image using Skopeo
 copy_image_with_skopeo() {
     local source_image="$1"
@@ -159,6 +182,8 @@ copy_all_images() {
     local current=0
     local success_count=0
     local failure_count=0
+    local skipped_count=0
+    local copied_count=0
     local failed_images=()
     echo "copy_all: started"
     
@@ -167,36 +192,48 @@ copy_all_images() {
         # Skip empty lines
         [[ -z "${source_image}" ]] && continue
         
-        #((current++))
+        ((current++))
         log "Processing image ${current}/${total_images}: ${source_image}"
         
         # Transform image name for destination
         local dest_image=$(transform_image_name "${source_image}")
         
-        # Copy image using Skopeo
-        if copy_image_with_skopeo "${source_image}" "${dest_image}"; then
-            # Validate the copied image
-            if validate_copied_image "${dest_image}"; then
-                ((success_count++))
+        # Check if destination image already exists
+        if check_image_exists "${dest_image}"; then
+            log "⏩ Skipping copy - image already exists: ${dest_image}"
+            ((success_count++))
+            ((skipped_count++))
+        else
+            # Copy image using Skopeo
+            if copy_image_with_skopeo "${source_image}" "${dest_image}"; then
+                # Validate the copied image
+                if validate_copied_image "${dest_image}"; then
+                    ((success_count++))
+                    ((copied_count++))
+                else
+                    ((failure_count++))
+                    failed_images+=("${source_image} (validation failed)")
+                fi
             else
                 ((failure_count++))
-                failed_images+=("${source_image} (validation failed)")
+                failed_images+=("${source_image} (copy failed)")
             fi
-        else
-            ((failure_count++))
-            failed_images+=("${source_image} (copy failed)")
         fi
         
         # Progress indicator
-        log "Progress: ${current}/${total_images} processed (${success_count} success, ${failure_count} failed)"
+        log "Progress: ${current}/${total_images} processed (${success_count} success, ${failure_count} failed, ${skipped_count} skipped)"
         
     done < "${IMAGES_FILE}"
     
     # Summary
     log "Image copying completed!"
     log "Total processed: ${total_images}"
-    log "Successful: ${success_count}"
+    log "Successful: ${success_count} (${copied_count} copied + ${skipped_count} skipped)"
     log "Failed: ${failure_count}"
+    
+    if [[ "${skipped_count}" -gt 0 ]]; then
+        log "⏩ Time saved by skipping ${skipped_count} existing images"
+    fi
     
     if [[ "${failure_count}" -gt 0 ]]; then
         log "Failed images:"
