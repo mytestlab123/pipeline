@@ -4,11 +4,12 @@
 # Part of the Nextflow Offline Execution Demo MVP
 
 set -euo pipefail
+#set -x
 
 # Configuration
 IMAGES_FILE="./offline-assets/images.txt"
 LOG_FILE="/tmp/pull-images.log"
-ENV_FILE="./.env"
+ENV_FILE="${HOME}/.env"
 DEST_REGISTRY="docker.io/mytestlab123"
 SKOPEO_IMAGE="quay.io/skopeo/stable"
 
@@ -101,6 +102,7 @@ transform_image_name() {
 copy_image_with_skopeo() {
     local source_image="$1"
     local dest_image="$2"
+    echo "copy_image_with_skopeo: started"
     
     log "Copying: ${source_image} -> ${dest_image}"
     
@@ -128,6 +130,7 @@ copy_image_with_skopeo() {
 # Validate copied image exists in destination registry
 validate_copied_image() {
     local dest_image="$1"
+    echo "validate_copied_image: started"
     
     log "Validating copied image: ${dest_image}"
     
@@ -157,12 +160,14 @@ copy_all_images() {
     local success_count=0
     local failure_count=0
     local failed_images=()
+    echo "copy_all: started"
     
     while IFS= read -r source_image; do
+    echo $source_image
         # Skip empty lines
         [[ -z "${source_image}" ]] && continue
         
-        ((current++))
+        #((current++))
         log "Processing image ${current}/${total_images}: ${source_image}"
         
         # Transform image name for destination
