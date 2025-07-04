@@ -274,3 +274,25 @@ Post-MVP considerations include multiple pipeline support, AWS Systems Manager i
 - Assumes offline machine can authenticate to Docker Hub for initial image pulls
 - May need to handle different offline scenarios (air-gapped vs limited connectivity)
 - Assumes sufficient local storage for pipeline assets and Docker images (multi-GB)
+
+### Done – July 4, 2025
+
+**Completed**: Implemented offline-setup.sh script with full offline machine preparation functionality and testing.
+
+**Deliverables Completed**:
+- ✓ Created executable `offline-setup.sh` script that loads pipeline assets from shared storage
+- ✓ Implemented Docker image loading from Docker Hub repository with transformation logic
+- ✓ Added comprehensive validation to ensure all required assets and images are available offline
+- ✓ Created offline environment preparation with proper directory structure and configuration
+- ✓ Added component test (`test-offline-setup.sh`) to validate offline setup functionality with mocking
+- ✓ Updated test suite to include new script validation in `test/run.sh`
+- ✓ Enhanced test documentation in `test/README.md`
+
+**Technical Details**:
+- Script successfully loads pipeline assets from `./offline-assets/` directory structure with validation
+- Pulls required Docker images from `docker.io/mytestlab123/` repository using cached credentials
+- Validates all 3 required images (fastqc, multiqc, seqtk) are available locally after pulling
+- Creates appropriate Nextflow configuration (`nextflow-offline.config`) for offline execution mode
+- Provides clear logging and error handling to `/tmp/offline-setup.log` for missing assets or connectivity issues
+- Generates comprehensive offline-ready environment status report with asset inventory
+- Full test coverage validates all functionality with mock Docker operations (actual pulls require credentials)
