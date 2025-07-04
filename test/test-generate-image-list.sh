@@ -126,8 +126,8 @@ test_manifest_generation() {
         exit 1
     fi
     
-    if ! grep -q "Registry:" "offline-assets/images-manifest.txt"; then
-        echo "ERROR: Registry information not found in manifest"
+    if ! grep -q "Method:" "offline-assets/images-manifest.txt"; then
+        echo "ERROR: Method information not found in manifest"
         exit 1
     fi
     

@@ -70,9 +70,50 @@ extract_default_registry() {
     fi
 }
 
-# Extract Docker images from module files
-extract_docker_images() {
-    log "Extracting Docker images from module files..."
+# Check if jq is available for JSON parsing
+check_jq_available() {
+    if command -v jq &> /dev/null; then
+        return 0
+    else
+        log "jq not available, will use manual parsing fallback"
+        return 1
+    fi
+}
+
+# Extract Docker images using nextflow inspect (preferred method)
+extract_images_with_inspect() {
+    log "Extracting Docker images using nextflow inspect..."
+    
+    local temp_json="./offline-assets/inspect-output.json"
+    local pipeline_name="nf-core/demo"
+    
+    # Try using nextflow inspect with concretize flag
+    log "Running: nextflow inspect ${pipeline_name} -profile test,docker --outdir /tmp/nf-demo-out -concretize true -format json"
+    
+    if nextflow inspect "${pipeline_name}" -profile test,docker --outdir /tmp/nf-demo-out -concretize true -format json > "${temp_json}" 2>> "${LOG_FILE}"; then
+        log "Nextflow inspect completed successfully"
+        
+        # Parse JSON to extract container images
+        if check_jq_available && jq -r '.processes[].container // empty' "${temp_json}" | grep -v '^$' | sort -u > "${IMAGES_FILE}"; then
+            local image_count=$(wc -l < "${IMAGES_FILE}")
+            log "Extracted ${image_count} Docker images using nextflow inspect"
+            rm -f "${temp_json}"
+            return 0
+        else
+            log "Failed to parse JSON output, falling back to manual parsing"
+        fi
+    else
+        log "Nextflow inspect failed, falling back to manual parsing"
+    fi
+    
+    # Clean up temp file
+    rm -f "${temp_json}"
+    return 1
+}
+
+# Fallback: Extract Docker images from module files (manual parsing)
+extract_docker_images_manual() {
+    log "Extracting Docker images from module files (manual parsing)..."
     
     local temp_images_file=$(mktemp)
     
@@ -101,12 +142,23 @@ extract_docker_images() {
     if [[ -s "${temp_images_file}" ]]; then
         sort -u "${temp_images_file}" > "${IMAGES_FILE}"
         local image_count=$(wc -l < "${IMAGES_FILE}")
-        log "Extracted Docker images (${image_count} unique)"
+        log "Extracted Docker images (${image_count} unique) using manual parsing"
     else
         error_exit "No Docker images found in pipeline modules"
     fi
     
     rm -f "${temp_images_file}"
+}
+
+# Main image extraction with fallback
+extract_docker_images() {
+    # Try nextflow inspect first (preferred method)
+    if extract_images_with_inspect; then
+        log "Successfully used nextflow inspect method"
+    else
+        log "Falling back to manual parsing method"
+        extract_docker_images_manual
+    fi
 }
 
 # Validate extracted images
@@ -142,11 +194,17 @@ generate_image_manifest() {
     {
         echo "# nf-core/demo Pipeline Docker Images"
         echo "# Generated on: $(date)"
-        echo "# Registry: ${DEFAULT_REGISTRY}"
+        echo "# Method: nextflow inspect -concretize (with manual parsing fallback)"
         echo "# Total images: $(wc -l < "${IMAGES_FILE}")"
         echo ""
         echo "## Docker Images Required for Offline Execution"
         cat "${IMAGES_FILE}"
+        echo ""
+        echo "## Download Commands for Offline Use"
+        while IFS= read -r image; do
+            local filename=$(echo "${image}" | sed 's/[\/:]/_/g')
+            echo "docker pull ${image} && docker save ${image} -o ${filename}.tar"
+        done < "${IMAGES_FILE}"
     } > "${manifest_file}"
     
     log "Image manifest generated: ${manifest_file}"
@@ -172,6 +230,7 @@ main() {
     
     echo ""
     echo "✓ Docker image extraction completed successfully!"
+    echo "✓ Method: nextflow inspect with -concretize flag (with manual fallback)"
     echo "✓ Images list generated: ${IMAGES_FILE}"
     echo "✓ Total images: $(wc -l < "${IMAGES_FILE}")"
     echo "✓ Log file: ${LOG_FILE}"
