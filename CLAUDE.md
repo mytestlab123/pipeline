@@ -187,9 +187,62 @@ Post-MVP considerations include multiple pipeline support, AWS Systems Manager i
 - ✓ Enhanced test documentation in `test/README.md`
 
 **Technical Details**:
-- Script successfully extracts Docker images from all module files (`*.nf`) in the pipeline
+- Script successfully extracts Docker images using `nextflow inspect -concretize` (with manual parsing fallback)
 - Identifies registry configuration from `nextflow.config` (quay.io for nf-core/demo)
 - Generates `images.txt` with full registry paths: `quay.io/biocontainers/[tool]:[version]`
-- Creates comprehensive manifest (`images-manifest.txt`) with metadata
+- Creates comprehensive manifest (`images-manifest.txt`) with metadata and download commands
 - Extracted 3 Docker images: fastqc, multiqc, and seqtk tools
 - Full test coverage validates all extraction functionality end-to-end
+
+### Next Step – July 4, 2025
+
+**Goal**: Implement the third core MVP script (pull-images.sh) to copy the identified Docker container images to Docker Hub repository using Skopeo for offline access.
+
+**Deliverables**:
+- Create executable `pull-images.sh` script that reads from generated `images.txt` file
+- Implement Skopeo-based image copying using Docker container for portability
+- Add authentication handling using `.env` file with `$DOCKER_USER` and `$DOCKER_PAT`
+- Copy all images from source registries (quay.io) to destination `docker.io/mytestlab123/`
+- Create validation to ensure all images are successfully copied to Docker Hub
+- Add component test to validate image copying functionality with mock credentials
+- Update test suite and documentation for new script
+
+**Acceptance Criteria**:
+- Script successfully reads image list from `images.txt` and copies all 3 Docker images
+- Uses Skopeo via Docker container: `docker run --rm quay.io/skopeo/stable copy`
+- Implements robust error handling for network failures, authentication issues, and registry errors
+- Transforms image names from `quay.io/biocontainers/[tool]:[tag]` to `docker.io/mytestlab123/[tool]:[tag]`
+- Loads authentication credentials securely from `.env` file
+- Provides clear progress indicators and comprehensive logging throughout the process
+- Validates copied images are accessible in Docker Hub repository
+- Test suite validates complete copy functionality with appropriate mocking
+
+**Risks / Assumptions**:
+- Assumes stable internet connectivity for copying multi-GB container images between registries
+- Risk of Docker Hub rate limiting during bulk image operations
+- Assumes `.env` file contains valid `DOCKER_USER` and `DOCKER_PAT` credentials
+- May encounter source registry authentication requirements (currently public quay.io images)
+- Assumes Docker daemon is running and accessible for Skopeo container execution
+
+### Done – July 4, 2025
+
+**Completed**: Implemented pull-images.sh script with full Skopeo-based Docker image copying functionality and testing.
+
+**Deliverables Completed**:
+- ✓ Created executable `pull-images.sh` script that reads from generated `images.txt` file
+- ✓ Implemented Skopeo-based image copying using Docker container for portability
+- ✓ Added authentication handling using `.env` file with `$DOCKER_USER` and `$DOCKER_PAT`
+- ✓ Implemented image copying from source registries (quay.io) to destination `docker.io/mytestlab123/`
+- ✓ Created validation to ensure all images are successfully copied to Docker Hub
+- ✓ Added component test (`test-pull-images.sh`) to validate image copying functionality
+- ✓ Updated test suite to include new script validation in `test/run.sh`
+- ✓ Enhanced test documentation in `test/README.md`
+
+**Technical Details**:
+- Script uses Skopeo via Docker container: `docker run --rm quay.io/skopeo/stable copy`
+- Implements robust error handling for network failures, authentication issues, and registry errors
+- Transforms image names from `quay.io/biocontainers/[tool]:[tag]` to `docker.io/mytestlab123/[tool]:[tag]`
+- Loads authentication credentials securely from `.env` file (excluded from git)
+- Provides clear progress indicators and comprehensive logging to `/tmp/pull-images.log`
+- Generates comprehensive manifest with offline usage instructions
+- Full test coverage validates all functionality except actual Skopeo execution (requires credentials)
