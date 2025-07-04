@@ -246,3 +246,31 @@ Post-MVP considerations include multiple pipeline support, AWS Systems Manager i
 - Provides clear progress indicators and comprehensive logging to `/tmp/pull-images.log`
 - Generates comprehensive manifest with offline usage instructions
 - Full test coverage validates all functionality except actual Skopeo execution (requires credentials)
+
+### Next Step – July 4, 2025
+
+**Goal**: Implement the fourth core MVP script (offline-setup.sh) to load pre-downloaded pipeline assets and Docker images on an offline machine for pipeline execution.
+
+**Deliverables**:
+- Create executable `offline-setup.sh` script that loads pipeline assets from shared storage
+- Implement Docker image loading from Docker Hub repository or local storage 
+- Add validation to ensure all required assets and images are available offline
+- Create offline environment preparation with proper directory structure
+- Add component test to validate offline setup functionality
+- Update test suite and documentation for new script
+
+**Acceptance Criteria**:
+- Script successfully loads pipeline assets from `./offline-assets/` directory structure
+- Pulls required Docker images from `docker.io/mytestlab123/` repository using cached credentials
+- Validates all 3 required images (fastqc, multiqc, seqtk) are available locally
+- Creates appropriate Nextflow configuration for offline execution mode
+- Provides clear logging and error handling for missing assets or connectivity issues
+- Generates offline-ready environment status report with asset inventory
+- Test suite validates complete offline setup functionality with mock assets
+
+**Risks / Assumptions**:
+- Assumes offline machine has Docker/Podman runtime available for image pulling
+- Risk of incomplete asset transfer if shared storage is unavailable or corrupted
+- Assumes offline machine can authenticate to Docker Hub for initial image pulls
+- May need to handle different offline scenarios (air-gapped vs limited connectivity)
+- Assumes sufficient local storage for pipeline assets and Docker images (multi-GB)

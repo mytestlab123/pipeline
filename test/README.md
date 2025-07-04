@@ -88,6 +88,23 @@ This test validates:
 - ✓ Log file location (/tmp directory)
 - ✓ Manifest generation structure
 
+### Offline Setup Script Test
+Test the offline-setup.sh script functionality:
+
+```bash
+chmod +x test/test-offline-setup.sh
+./test/test-offline-setup.sh
+```
+
+This test validates:
+- ✓ Script execution and permissions
+- ✓ Environment file (.env) loading and validation
+- ✓ Asset validation (pipeline files and structure)
+- ✓ Image name transformation logic
+- ✓ Offline configuration generation
+- ✓ Log file creation in /tmp directory
+- ✓ Mock Docker operations for testing
+
 ### Run All Tests
 Execute all available tests:
 
@@ -102,6 +119,7 @@ echo "Running all tests..."
 ./test/test-online-prepare.sh
 ./test/test-generate-image-list.sh
 ./test/test-pull-images.sh
+./test/test-offline-setup.sh
 echo "All tests completed successfully!"
 EOF
 
