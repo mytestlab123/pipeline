@@ -55,6 +55,22 @@ This test validates:
 - ✓ Essential file validation
 - ✓ Manifest generation
 
+### Generate Image List Script Test
+Test the generate-image-list.sh script functionality:
+
+```bash
+chmod +x test/test-generate-image-list.sh
+./test/test-generate-image-list.sh
+```
+
+This test validates:
+- ✓ Script execution and permissions
+- ✓ Docker image extraction from modules
+- ✓ Registry configuration parsing
+- ✓ Image list generation (images.txt)
+- ✓ Image manifest creation
+- ✓ Expected image count validation
+
 ### Run All Tests
 Execute all available tests:
 
@@ -67,6 +83,7 @@ set -euo pipefail
 echo "Running all tests..."
 ./test/smoke-test.sh
 ./test/test-online-prepare.sh
+./test/test-generate-image-list.sh
 echo "All tests completed successfully!"
 EOF
 

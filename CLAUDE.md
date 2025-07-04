@@ -146,3 +146,50 @@ Post-MVP considerations include multiple pipeline support, AWS Systems Manager i
 - Manifest generation provides complete asset inventory
 - Comprehensive logging to `offline-assets/online-prepare.log`
 - Full test coverage validates all functionality end-to-end
+
+### Next Step – July 4, 2025
+
+**Goal**: Implement the second core MVP script (generate-image-list.sh) to analyze the downloaded nf-core/demo pipeline and extract required Docker container images.
+
+**Deliverables**:
+- Create executable `generate-image-list.sh` script that parses nf-core/demo pipeline configuration
+- Implement Docker image extraction from nextflow.config, modules, and workflow files
+- Generate comprehensive image list with tags and registry information
+- Add validation to ensure all required images are identified
+- Create component test to validate image list generation functionality
+- Update test suite to include new script validation
+
+**Acceptance Criteria**:
+- Script successfully parses pipeline configuration files (nextflow.config, modules.json, workflow files)
+- Extracts all Docker images referenced in the pipeline with full registry paths and tags
+- Generates organized image list file (images.txt) with one image per line
+- Handles different image reference formats (docker://, quay.io/, etc.)
+- Provides clear logging and error handling for parsing failures
+- Test suite validates image extraction accuracy and completeness
+
+**Risks / Assumptions**:
+- Assumes nf-core/demo pipeline follows standard image reference patterns
+- Risk of missing images if referenced through complex variable substitution
+- Assumes pipeline configuration structure remains consistent
+- May need to handle different registry formats and authentication requirements
+
+### Done – July 4, 2025
+
+**Completed**: Implemented generate-image-list.sh script with full Docker image extraction functionality and testing.
+
+**Deliverables Completed**:
+- ✓ Created executable `generate-image-list.sh` script that parses nf-core/demo pipeline configuration
+- ✓ Implemented Docker image extraction from nextflow.config, modules, and workflow files
+- ✓ Generated comprehensive image list with tags and registry information (3 images identified)
+- ✓ Added validation to ensure all required images are identified with proper format checking
+- ✓ Created component test (`test-generate-image-list.sh`) to validate image list generation functionality
+- ✓ Updated test suite to include new script validation in `test/run.sh`
+- ✓ Enhanced test documentation in `test/README.md`
+
+**Technical Details**:
+- Script successfully extracts Docker images from all module files (`*.nf`) in the pipeline
+- Identifies registry configuration from `nextflow.config` (quay.io for nf-core/demo)
+- Generates `images.txt` with full registry paths: `quay.io/biocontainers/[tool]:[version]`
+- Creates comprehensive manifest (`images-manifest.txt`) with metadata
+- Extracted 3 Docker images: fastqc, multiqc, and seqtk tools
+- Full test coverage validates all extraction functionality end-to-end
