@@ -38,6 +38,42 @@ Testing basic functionality and prerequisites...
 ✓ Required tools are available
 ```
 
+## Component Tests
+
+### Online Prepare Script Test
+Test the online-prepare.sh script functionality:
+
+```bash
+chmod +x test/test-online-prepare.sh
+./test/test-online-prepare.sh
+```
+
+This test validates:
+- ✓ Script execution and permissions
+- ✓ Asset directory creation
+- ✓ nf-core/demo pipeline download
+- ✓ Essential file validation
+- ✓ Manifest generation
+
+### Run All Tests
+Execute all available tests:
+
+```bash
+# Create test runner script
+cat > test/run.sh << 'EOF'
+#!/bin/bash
+set -euo pipefail
+
+echo "Running all tests..."
+./test/smoke-test.sh
+./test/test-online-prepare.sh
+echo "All tests completed successfully!"
+EOF
+
+chmod +x test/run.sh
+./test/run.sh
+```
+
 ## Integration Tests (Future)
 
 ### End-to-End Workflow Test
@@ -45,13 +81,13 @@ After MVP implementation, run the full workflow test:
 
 ```bash
 # Online phase
-./scripts/online-prepare.sh nf-core/demo
-./scripts/generate-image-list.sh nf-core/demo
-./scripts/pull-images.sh
+./online-prepare.sh
+./generate-image-list.sh
+./pull-images.sh
 
 # Offline phase
-./scripts/offline-setup.sh
-./scripts/run-offline-pipeline.sh nf-core/demo
+./offline-setup.sh
+./run-offline-pipeline.sh
 ```
 
 ### Test Environment Requirements
