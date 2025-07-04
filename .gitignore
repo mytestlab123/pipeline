@@ -62,3 +62,4 @@ desktop.ini
 node_modules/
 .next/
 .nextflow/
+*.nextflow.log*
