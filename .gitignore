@@ -61,3 +61,4 @@ desktop.ini
 *.sublime-workspace
 node_modules/
 .next/
+.nextflow/
