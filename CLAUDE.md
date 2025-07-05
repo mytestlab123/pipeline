@@ -366,5 +366,53 @@ Post-MVP considerations include multiple pipeline support, AWS Systems Manager i
 - Works with nf-core/demo v1.0.2 out of the box
 - Robust error handling and validation throughout
 
+### Done – July 5, 2025
+
+**Completed**: Implemented comprehensive end-to-end integration demo and user documentation.
+
+**Deliverables Completed**:
+- ✓ Created `demo.sh` script that orchestrates complete end-to-end workflow (online → offline phases)
+- ✓ Implemented comprehensive user documentation with step-by-step setup guide in `docs/README.md`
+- ✓ Added environment validation and troubleshooting guide for common issues
+- ✓ Created real-world demo scenario with performance benchmarking and timing analysis
+- ✓ Generated complete user manual with AWS EC2 setup instructions and configuration
+- ✓ Added demo test script (`test-demo.sh`) to validate integration functionality
+
+**Technical Details**:
+- **Demo Script**: 205-line orchestrator with validate, online-only, offline-only, and full modes
+- **Performance Tracking**: Built-in timing analysis and reporting for each phase
+- **Error Handling**: Comprehensive validation and graceful failure handling
+- **Documentation**: Complete installation guide, troubleshooting, and AWS setup instructions
+- **Integration Testing**: New test validates demo script functionality and integration
+- **User Experience**: Color-coded output, progress indicators, and clear next-step guidance
+
+### Next Step – July 5, 2025
+
+**Goal**: Create comprehensive end-to-end integration demo and user documentation for the complete offline workflow.
+
+**Deliverables**:
+- Create `demo.sh` script that orchestrates complete end-to-end workflow (online → offline phases)
+- Implement comprehensive user documentation with step-by-step setup guide
+- Add environment validation and troubleshooting guide for common issues
+- Create real-world demo scenario with sample data and expected outputs
+- Add performance benchmarking and timing analysis for each phase
+- Generate complete user manual with AWS EC2 setup instructions
+
+**Acceptance Criteria**:
+- Single `demo.sh` script successfully executes complete online-to-offline workflow
+- Demo script includes environment validation, setup verification, and cleanup
+- User documentation covers all prerequisites, setup steps, and troubleshooting
+- Demo works on fresh AWS EC2 instance with minimal manual setup
+- All demo components are tested and validated with clear success indicators
+- Performance metrics and timing data are captured and reported
+- Documentation includes AWS IAM roles, security groups, and S3 configuration
+
+**Risks / Assumptions**:
+- Assumes AWS credentials and Docker Hub access are properly configured
+- Risk of environment-specific issues not covered in testing scenarios
+- Assumes users have basic AWS and Docker knowledge for setup
+- May require additional validation for different AWS regions or instance types
+- Risk of demo complexity overshadowing MVP simplicity for 30-minute presentation
+
 ---
 **Context left until auto-compact: 15%**
