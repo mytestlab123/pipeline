@@ -263,3 +263,41 @@ This document defines the comprehensive test criteria for the Nextflow Offline E
 - Test criteria changes must be documented
 - Backward compatibility must be maintained where possible
 - Breaking changes must be clearly communicated
+
+### 6. Demo Integration Test (`test-demo.sh`)
+
+**Objective**: Validate end-to-end demo.sh script functionality and integration
+
+**Plan**: Test demo.sh script orchestration of complete online → offline workflow with performance benchmarking and error handling.
+
+**Action**:
+1. Test script existence and permissions
+2. Validate help mode functionality
+3. Test environment validation mode
+4. Check configuration file handling (.env)
+5. Validate log file creation in /tmp
+6. Test performance tracking functionality
+7. Validate error handling for invalid inputs
+8. Test cleanup functionality
+9. Check integration with all 5 core scripts
+10. Validate demo mode recognition and execution
+
+**Testing**:
+- Script execution and permissions validation
+- Help and validate mode functionality testing
+- Configuration and logging system testing
+- Performance tracking and cleanup validation
+- Integration testing with core MVP scripts
+- Error handling and mode validation testing
+
+**Success Criteria**:
+- Demo script exists and is executable
+- Help mode displays usage information correctly
+- Validate mode checks environment prerequisites
+- Configuration file handling works with .env files
+- Log files are created in /tmp directory
+- Performance tracking measures phase durations
+- Error handling gracefully manages invalid inputs
+- Cleanup functionality removes temporary files
+- Integration with all 5 core scripts validated
+- All demo modes (full, online-only, offline-only, validate, help) recognized
