@@ -1,124 +1,57 @@
 #!/bin/bash
-
-# pull-images.sh - Copy Docker images to Docker Hub using Skopeo
-# Part of the Nextflow Offline Execution Demo MVP
-
+# pull-images.sh - Copy Docker images to Docker Hub using Skopeo (MVP demo)
 set -euo pipefail
-#set -x
 
-# Configuration
+# Simple config
 IMAGES_FILE="./offline-assets/images.txt"
 LOG_FILE="/tmp/pull-images.log"
-ENV_FILE="${HOME}/.env"
+ENV_FILE=".env"
 DEST_REGISTRY="docker.io/mytestlab123"
-SKOPEO_IMAGE="quay.io/skopeo/stable"
 
-# Logging function
+# Simple logging
 log() {
-    local message="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-    echo "$message"
-    # Always write to log file in /tmp
-    echo "$message" >> "${LOG_FILE}"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "${LOG_FILE}"
 }
 
-# Error handler
+# Simple error handler
 error_exit() {
     log "ERROR: $1"
     exit 1
 }
 
-# Load environment variables from .env file
-load_env_credentials() {
-    log "Loading authentication credentials from .env file..."
-    
-    if [[ ! -f "${ENV_FILE}" ]]; then
-        error_exit ".env file not found. Please create ${ENV_FILE} with DOCKER_USER and DOCKER_PAT"
-    fi
-    
-    # Source .env file
-    set -a  # automatically export all variables
-    source "${ENV_FILE}"
-    set +a  # disable automatic export
-    
-    if [[ -z "${DOCKER_USER:-}" ]]; then
-        error_exit "DOCKER_USER not set in .env file"
-    fi
-    
-    if [[ -z "${DOCKER_PAT:-}" ]]; then
-        error_exit "DOCKER_PAT not set in .env file"
-    fi
-    
-    log "Credentials loaded successfully for user: ${DOCKER_USER}"
-}
-
-# Check required tools
-check_requirements() {
-    log "Checking required tools..."
-    
-    if ! command -v docker &> /dev/null; then
-        error_exit "docker is not installed or not in PATH"
-    fi
-    
-    # Test docker daemon access
-    if ! docker info &> /dev/null; then
-        error_exit "Docker daemon is not running or not accessible"
-    fi
-    
-    log "Required tools available"
-}
-
-# Validate input files
-validate_input_files() {
-    log "Validating input files..."
-    
-    if [[ ! -f "${IMAGES_FILE}" ]]; then
-        error_exit "Images file not found: ${IMAGES_FILE}. Run generate-image-list.sh first."
-    fi
-    
-    local image_count=$(wc -l < "${IMAGES_FILE}" 2>/dev/null || echo "0")
-    
-    if [[ "${image_count}" -eq 0 ]]; then
-        error_exit "Images file is empty: ${IMAGES_FILE}"
-    fi
-    
-    log "Found ${image_count} images to copy"
-}
-
-# Transform image name from source to destination format
+# Transform image name (quay.io/biocontainers/fastqc:tag -> docker.io/mytestlab123/fastqc:tag)
 transform_image_name() {
     local source_image="$1"
+    local name_tag=$(echo "${source_image}" | sed 's|.*/||')
+    echo "${DEST_REGISTRY}/${name_tag}"
+}
+
+# Check if image exists
+check_image_exists() {
+    local dest_image="$1"
+    log "Checking if image already exists: ${dest_image}"
     
-    # Extract image name and tag from source
-    # Example: quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0 -> fastqc:0.12.1--hdfd78af_0
-    local image_name_tag=$(echo "${source_image}" | sed 's|.*/||')
-    
-    # Create destination image name
-    local dest_image="${DEST_REGISTRY}/${image_name_tag}"
-    
-    echo "${dest_image}"
+    if docker run --rm quay.io/skopeo/stable inspect "docker://${dest_image}" &>/dev/null; then
+        log "✓ Image already exists: ${dest_image}"
+        return 0
+    else
+        log "○ Image not found, copy needed: ${dest_image}"
+        return 1
+    fi
 }
 
 # Copy single image using Skopeo
 copy_image_with_skopeo() {
     local source_image="$1"
     local dest_image="$2"
-    echo "copy_image_with_skopeo: started"
     
     log "Copying: ${source_image} -> ${dest_image}"
     
-    # Use Skopeo via Docker container for portability
-    local skopeo_cmd=(
-        docker run --rm
-        -v "${HOME}/.docker:/root/.docker:ro"
-        "${SKOPEO_IMAGE}"
-        copy
-        --dest-creds "${DOCKER_USER}:${DOCKER_PAT}"
-        "docker://${source_image}"
-        "docker://${dest_image}"
-    )
-    
-    # Execute Skopeo copy command
-    if "${skopeo_cmd[@]}" 2>> "${LOG_FILE}"; then
+    if docker run --rm quay.io/skopeo/stable copy \
+        --dest-creds "${DOCKER_USER}:${DOCKER_PAT}" \
+        "docker://${source_image}" \
+        "docker://${dest_image}" 2>>"${LOG_FILE}"; then
         log "✓ Successfully copied: ${dest_image}"
         return 0
     else
@@ -127,153 +60,95 @@ copy_image_with_skopeo() {
     fi
 }
 
-# Validate copied image exists in destination registry
-validate_copied_image() {
-    local dest_image="$1"
-    echo "validate_copied_image: started"
+# Main function
+main() {
+    log "Starting Docker image copy process using Skopeo"
     
-    log "Validating copied image: ${dest_image}"
+    # Check requirements
+    log "Checking required tools..."
+    command -v docker &>/dev/null || error_exit "docker not found"
+    docker info &>/dev/null || error_exit "Docker daemon not running"
+    log "Required tools available"
     
-    # Use Skopeo to inspect the copied image
-    local inspect_cmd=(
-        docker run --rm
-        "${SKOPEO_IMAGE}"
-        inspect
-        "docker://${dest_image}"
-    )
+    # Load credentials
+    log "Loading authentication credentials from .env file..."
+    [[ ! -f "${ENV_FILE}" ]] && error_exit ".env file not found. Create with DOCKER_USER and DOCKER_PAT"
     
-    if "${inspect_cmd[@]}" &> /dev/null; then
-        log "✓ Validation successful: ${dest_image}"
-        return 0
-    else
-        log "✗ Validation failed: ${dest_image}"
-        return 1
-    fi
-}
-
-# Copy all images from the images file
-copy_all_images() {
+    set -a
+    source "${ENV_FILE}"
+    set +a
+    
+    [[ -z "${DOCKER_USER:-}" ]] && error_exit "DOCKER_USER not set in .env"
+    [[ -z "${DOCKER_PAT:-}" ]] && error_exit "DOCKER_PAT not set in .env"
+    log "Credentials loaded successfully for user: ${DOCKER_USER}"
+    
+    # Validate input
+    log "Validating input files..."
+    [[ ! -f "${IMAGES_FILE}" ]] && error_exit "Images file not found: ${IMAGES_FILE}. Run generate-image-list.sh first."
+    local image_count=$(wc -l < "${IMAGES_FILE}")
+    [[ "${image_count}" -eq 0 ]] && error_exit "Images file is empty: ${IMAGES_FILE}"
+    log "Found ${image_count} images to copy"
+    
+    # Copy all images
     log "Starting image copying process..."
+    local success_count=0 skipped_count=0 failure_count=0
     
-    local total_images=$(wc -l < "${IMAGES_FILE}")
-    local current=0
-    local success_count=0
-    local failure_count=0
-    local failed_images=()
-    echo "copy_all: started"
-    
-    while IFS= read -r source_image; do
-    echo $source_image
-        # Skip empty lines
+    while IFS= read -r source_image || [[ -n "$source_image" ]]; do
         [[ -z "${source_image}" ]] && continue
         
-        #((current++))
-        log "Processing image ${current}/${total_images}: ${source_image}"
-        
-        # Transform image name for destination
         local dest_image=$(transform_image_name "${source_image}")
+        echo $source_image
         
-        # Copy image using Skopeo
-        if copy_image_with_skopeo "${source_image}" "${dest_image}"; then
-            # Validate the copied image
-            if validate_copied_image "${dest_image}"; then
+        # Check if exists, skip if so
+        if check_image_exists "${dest_image}"; then
+            log "⏩ Skipping copy - image already exists: ${dest_image}"
+            ((success_count++))
+            ((skipped_count++))
+        else
+            # Copy image
+            if copy_image_with_skopeo "${source_image}" "${dest_image}"; then
                 ((success_count++))
+                ((copied_count++))
             else
                 ((failure_count++))
-                failed_images+=("${source_image} (validation failed)")
             fi
-        else
-            ((failure_count++))
-            failed_images+=("${source_image} (copy failed)")
         fi
-        
-        # Progress indicator
-        log "Progress: ${current}/${total_images} processed (${success_count} success, ${failure_count} failed)"
-        
     done < "${IMAGES_FILE}"
     
     # Summary
     log "Image copying completed!"
-    log "Total processed: ${total_images}"
-    log "Successful: ${success_count}"
+    log "Total processed: ${image_count}"
+    log "Successful: ${success_count} (${copied_count:-0} copied + ${skipped_count} skipped)"
     log "Failed: ${failure_count}"
     
-    if [[ "${failure_count}" -gt 0 ]]; then
-        log "Failed images:"
-        for failed_image in "${failed_images[@]}"; do
-            log "  - ${failed_image}"
-        done
-        error_exit "Some images failed to copy. Check logs for details."
-    fi
-}
-
-# Generate copy manifest with results
-generate_copy_manifest() {
+    [[ "${failure_count}" -gt 0 ]] && error_exit "Some images failed to copy"
+    
+    # Simple manifest
     log "Generating copy manifest..."
-    
-    local manifest_file="./offline-assets/pull-images-manifest.txt"
-    local total_images=$(wc -l < "${IMAGES_FILE}")
-    
-    {
-        echo "# Docker Image Copy Manifest"
-        echo "# Generated on: $(date)"
-        echo "# Source: Various registries (mainly quay.io)"
-        echo "# Destination: ${DEST_REGISTRY}"
-        echo "# Total images copied: ${total_images}"
-        echo ""
-        echo "## Copied Images"
-        while IFS= read -r source_image; do
-            [[ -z "${source_image}" ]] && continue
-            local dest_image=$(transform_image_name "${source_image}")
-            echo "Source: ${source_image}"
-            echo "Destination: ${dest_image}"
-            echo "Pull command: docker pull ${dest_image}"
-            echo ""
-        done < "${IMAGES_FILE}"
-        echo ""
-        echo "## Offline Usage Instructions"
-        echo "1. On offline machine, pull images from Docker Hub:"
-        while IFS= read -r source_image; do
-            [[ -z "${source_image}" ]] && continue
-            local dest_image=$(transform_image_name "${source_image}")
-            echo "   docker pull ${dest_image}"
-        done < "${IMAGES_FILE}"
-        echo ""
-        echo "2. Tag images for local use (if needed):"
-        while IFS= read -r source_image; do
-            [[ -z "${source_image}" ]] && continue
-            local dest_image=$(transform_image_name "${source_image}")
-            echo "   docker tag ${dest_image} ${source_image}"
-        done < "${IMAGES_FILE}"
-    } > "${manifest_file}"
-    
-    log "Copy manifest generated: ${manifest_file}"
-}
+    cat > "./offline-assets/pull-images-manifest.txt" << EOF
+# Docker Image Copy Manifest
+# Generated on: $(date)
+# Destination: ${DEST_REGISTRY}
+# Total images copied: ${image_count}
 
-# Main execution
-main() {
-    log "Starting Docker image copy process using Skopeo"
-    
-    check_requirements
-    load_env_credentials
-    validate_input_files
-    copy_all_images
-    generate_copy_manifest
+## Copied Images
+$(while IFS= read -r img; do [[ -n "$img" ]] && echo "$(transform_image_name "$img")"; done < "${IMAGES_FILE}")
+
+## Offline Usage Instructions
+1. On offline machine, pull images:
+$(while IFS= read -r img; do [[ -n "$img" ]] && echo "   docker pull $(transform_image_name "$img")"; done < "${IMAGES_FILE}")
+EOF
+    log "Copy manifest generated: ./offline-assets/pull-images-manifest.txt"
     
     log "Docker image copy process completed successfully!"
     log "All images copied to: ${DEST_REGISTRY}"
     log "Log file: ${LOG_FILE}"
-    log "Next steps:"
-    log "  1. Run offline-setup.sh on offline machine"
-    log "  2. Pull images from Docker Hub on offline machine"
-    log "  3. Run offline pipeline execution"
     
     echo ""
     echo "✓ Docker image copy completed successfully!"
     echo "✓ Images copied to: ${DEST_REGISTRY}"
-    echo "✓ Total images: $(wc -l < "${IMAGES_FILE}")"
+    echo "✓ Total images: ${image_count}"
     echo "✓ Log file: ${LOG_FILE}"
 }
 
-# Execute main function
 main "$@"
