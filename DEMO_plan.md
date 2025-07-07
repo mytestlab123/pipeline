@@ -1,16 +1,16 @@
 # Nextflow Offline Demo Plan
 
-**Date**: July 5, 2025 11:47 PM SGT  
-**Status**: Planning phase - demo.sh needs complete redesign  
-**Issue**: Current demo.sh attempts network operations during "offline" phase
+**Date**: July 7, 2025 11:30 AM SGT  
+**Status**: Implementation phase - demo.sh redesign based on working S3 + Docker Hub architecture  
+**Solution**: Integrate proven online.sh and offline.sh approach into demo.sh
 
-## Current Problem Analysis
+## Working Architecture Analysis
 
-The current `demo.sh` is **fundamentally flawed** because:
-1. It's trying to pull Docker images during the "offline" phase 
-2. It's not properly simulating offline mode with `NXF_OFFLINE=true`
-3. It's not demonstrating that the pipeline can run without internet access
-4. The "offline" phase is still attempting network operations
+The **proven working approach** uses:
+1. **S3 Integration**: `s3://lifebit-user-data-nextflow/pipe/` for asset storage
+2. **Docker Hub Registry**: `docker.io/mytestlab123/` namespace for container mirroring
+3. **True Offline Mode**: `NXF_OFFLINE=true` with container retagging
+4. **Two-Machine Workflow**: Online EC2 → S3 → Offline EC2
 
 ## Recent Progress
 
@@ -28,47 +28,48 @@ The current `demo.sh` is **fundamentally flawed** because:
 - Added proper error handling and colored output
 - Now successfully processes images and handles skipping/copying
 
-## Required Demo Architecture: Single Machine Offline Simulation
+## Working Demo Architecture: Two-Machine S3 + Docker Hub Workflow
 
-**Core Concept**: Simulate online→offline workflow on one EC2 instance using `NXF_OFFLINE=true` to demonstrate true offline capability.
+**Core Concept**: Use proven S3 + Docker Hub approach with real two-machine workflow for true offline capability.
+
+### Environment Setup
+- **Online EC2**: `ip-10-0-17-169` (Amazon Linux 3, with internet)
+- **Offline EC2**: `ip-10-0-97-230` (Ubuntu 22.04, no internet, docker.io via Nexus)
+- **S3 Bucket**: `s3://lifebit-user-data-nextflow/pipe/`
+- **Docker Registry**: `docker.io/mytestlab123/`
 
 ### Phase 1: Online Preparation (Internet Enabled)
 ```bash
-# 1. Download Pipeline Assets
-./online-prepare.sh
-# → downloads nf-core/demo to ./offline-assets/pipeline/
+# 1. Build Offline Dataset
+./build_offline_dataset.sh data.csv /tmp/offline-fastq data_offline.csv
 
-# 2. Extract Image Requirements  
-./generate-image-list.sh
-# → creates ./offline-assets/images.txt (3 images)
+# 2. Download Pipeline (no containers)
+nf-core pipelines download "$PIPE" --revision "$VER" --compress none --container-system none
 
-# 3. Cache Docker Images Locally
-./pull-images.sh
-# → pulls ALL images to local Docker daemon
-# → Verify: docker images shows all required images cached locally
+# 3. Generate Container Manifest
+nextflow inspect "$PIPE" -r "$VER" -profile test,docker -concretize true -format json | jq -r '.processes[].container' > images.txt
 
-# 4. Validation
-# → Verify pipeline directory exists locally
-# → Verify all Docker images are in local Docker cache
-# → No more network dependencies needed
+# 4. Mirror Containers to Docker Hub
+./copy.sh images.txt --dest-registry docker.io --dest-namespace mytestlab123
+
+# 5. Sync to S3
+aws s3 sync "$ROOT" "s3://lifebit-user-data-nextflow/pipe/" --delete
 ```
 
-### Phase 2: Offline Simulation (NXF_OFFLINE=true)
+### Phase 2: Offline Execution (NXF_OFFLINE=true)
 ```bash
-# 1. Environment Setup
-export NXF_OFFLINE=true 
-# → Use local pipeline directory: ./offline-assets/pipeline/
-# → Use local Docker images (already cached)
+# 1. Download from S3
+aws s3 sync "s3://lifebit-user-data-nextflow/pipe/" "$ROOT" --delete
 
-# 2. Offline Pipeline Execution
-nextflow run ./offline-assets/pipeline/ -profile docker --offline
-# → Should complete successfully using only local assets
-# → No network calls should be made
+# 2. Set Offline Environment
+export NXF_OFFLINE=true
+export NXF_DEBUG=2
 
-# 3. Demonstration Success
-# → Pipeline completes without internet access
-# → All containers pulled from local Docker cache
-# → Proves offline execution capability
+# 3. Retag Containers
+bash ./retag_biocontainers.sh
+
+# 4. Execute Pipeline
+nextflow run offline/1_0_2/ -profile test,docker --input ./data_offline.csv --outdir /tmp/out-demo -w /tmp/work-demo
 ```
 
 ## Key Technical Requirements
@@ -88,47 +89,52 @@ nextflow run ./offline-assets/pipeline/ -profile docker --offline
 - https://www.nextflow.io/docs/latest/config.html  
 - https://www.nextflow.io/docs/latest/reference/env-vars.html
 
-## Immediate Action Items for Tomorrow
+## Implementation Steps
 
-### 1. Fix pull-images.sh Strategy
-**Current**: Pushes images to Docker Hub registry  
-**Required**: Pull images to local Docker daemon for offline use
+### 1. Update demo.sh Architecture
+**Current**: Uses local-only approach with individual scripts  
+**Required**: Integrate proven S3 + Docker Hub workflow from working scripts
 
-### 2. Fix offline-setup.sh  
-**Current**: Tries to pull from Docker Hub during offline phase  
-**Required**: Should verify local assets only, no network operations
+### 2. Add Pipeline Configurability
+**Current**: Hard-coded nf-core/demo  
+**Required**: Support PIPE, VER, PROJECT_NAME variables for extensibility
 
-### 3. Create Proper run-offline-pipeline.sh
-**Current**: Basic script  
-**Required**: 
-- Set `NXF_OFFLINE=true`
-- Use local pipeline directory `./offline-assets/pipeline/`
-- Use local Docker images only
-- Demonstrate no network calls
+### 3. Helper Scripts Integration
+**Current**: Separate script calls  
+**Required**: Integrate build_offline_dataset.sh, copy.sh, retag_biocontainers.sh
 
-### 4. Redesign demo.sh
-**Current**: Attempts network operations during offline phase  
-**Required**: True online→offline simulation that proves offline capability
+### 4. Add S3 Sync Functionality
+**Current**: Local directory operations  
+**Required**: S3 sync for real two-machine workflow
 
 ## Success Criteria
 
 The demo must prove: **"This pipeline can run completely offline using pre-downloaded assets"**
 
-- ✅ Phase 1: All assets downloaded and cached locally
-- ✅ Phase 2: Pipeline runs with `NXF_OFFLINE=true` using only local assets  
-- ✅ No network calls during offline execution
-- ✅ All containers sourced from local Docker cache
-- ✅ Complete pipeline execution without internet access
+- ✅ Phase 1: All assets uploaded to S3 and containers mirrored to Docker Hub
+- ✅ Phase 2: Pipeline runs with `NXF_OFFLINE=true` using only S3 + Docker Hub assets  
+- ✅ No network calls during offline execution (except S3 download and Docker Hub pulls)
+- ✅ All containers sourced from mytestlab123 namespace with proper retagging
+- ✅ Complete pipeline execution without internet access on offline EC2
 
-## Files to Review Tomorrow
+## Manual Test Commands
 
-1. `/home/ec2-user/git/mytestlab/pipeline/demo.sh` - Needs complete redesign
-2. `/home/ec2-user/git/mytestlab/pipeline/pull-images.sh` - Strategy change needed
-3. `/home/ec2-user/git/mytestlab/pipeline/offline-setup.sh` - Remove network operations
-4. `/home/ec2-user/git/mytestlab/pipeline/run-offline-pipeline.sh` - Add NXF_OFFLINE support
+### On Online EC2 (ip-10-0-17-169)
+```bash
+cd /home/ec2-user/git/mytestlab/pipeline
+./demo.sh online-only
+aws s3 ls s3://lifebit-user-data-nextflow/pipe/ --recursive
+```
+
+### On Offline EC2 (ip-10-0-97-230)
+```bash
+cd /home/ssm-user/pipe
+./demo.sh offline-only
+```
 
 ## Current Test Environment
 - Working directory: `/home/ec2-user/git/mytestlab/pipeline`
 - `.env` file configured with Docker Hub credentials
-- All 5 core MVP scripts implemented and tested
-- Ready for offline demo implementation
+- Helper scripts: build_offline_dataset.sh, copy.sh, retag_biocontainers.sh
+- S3 bucket: `s3://lifebit-user-data-nextflow/pipe/`
+- Docker Hub namespace: `docker.io/mytestlab123/`
