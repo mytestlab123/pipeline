@@ -16,6 +16,7 @@ TESTS_TO_RUN=(
     "generate-image-list"
     "pull-images"
     "offline-setup"
+    "demo"
 )
 
 # Test results tracking

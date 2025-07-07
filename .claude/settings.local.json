@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:nf-co.re)"
+    ],
+    "deny": []
+  }
+}

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Configuration
-IMAGES_FILE="./offline-assets/images.txt"
+IMAGES_FILE="images.txt"
 LOG_FILE="/tmp/pull-images.log"
 ENV_FILE="${HOME}/.env"
 DEST_REGISTRY="docker.io"
