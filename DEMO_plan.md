@@ -21,12 +21,17 @@ The **proven working approach** uses:
 - ✅ **offline-setup.sh** - Loads assets for offline execution (167 lines)
 - ✅ **run-offline-pipeline.sh** - Executes pipeline with offline flag (67 lines)
 
-### Key Fix Applied Today
-**pull-images.sh** was completely rewritten using the proven approach from user's working `copy.sh`:
-- Fixed file reading loop (was hanging)
-- Fixed tag parsing logic for images with/without tags
-- Added proper error handling and colored output
-- Now successfully processes images and handles skipping/copying
+### New Repository Setup Scripts (July 8, 2025)
+- ✅ **setup_repository_online.sh** - Automated image copying with configurable registry/namespace
+- ✅ **setup_repository_offline.sh** - Automated retagging and pulling for offline environment
+
+### Key Improvements Applied Today
+**Repository Setup Automation**:
+- Created `setup_repository_online.sh` for automated skopeo-based image copying
+- Created `setup_repository_offline.sh` for automated retagging and pulling
+- Configurable destination registry via `DEST_REGISTRY` and `DEST_NAMESPACE` variables
+- Simplified workflow: source file → copy images → destination file → retag/pull
+- Maintains compatibility with existing pipeline references
 
 ## Working Demo Architecture: Two-Machine S3 + Docker Hub Workflow
 
@@ -118,6 +123,18 @@ The demo must prove: **"This pipeline can run completely offline using pre-downl
 - ✅ Complete pipeline execution without internet access on offline EC2
 
 ## Manual Test Commands
+
+### Repository Setup Scripts (New)
+```bash
+# Online environment - copy images to Docker Hub
+./setup_repository_online.sh images.txt destination.txt
+
+# Offline environment - retag and pull images
+./setup_repository_offline.sh images.txt destination.txt
+
+# Custom registry/namespace
+DEST_REGISTRY=docker.io DEST_NAMESPACE=myorg ./setup_repository_online.sh
+```
 
 ### On Online EC2 (ip-10-0-17-169)
 ```bash
