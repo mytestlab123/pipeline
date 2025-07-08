@@ -1,0 +1,11 @@
+# Destination images for offline repository
+# Generated: Tue Jul  8 17:18:51 +08 2025
+
+mytestlab123/mulled-v2-1fa26d1ce03c295fe2fdcf85831a92fbcbd7e8c2:ded3841da0194af2701c780e9b3d653a85d27489-0
+mytestlab123/scanpy:1.10.2--e83da2205b92a538
+mytestlab123/star:2.7.10b--h9ee0642_0
+mytestlab123/multiqc:1.27--pyhdfd78af_0
+mytestlab123/scanpy:1.10.2--e83da2205b92a538
+mytestlab123/anndatar:20241129
+mytestlab123/python:3.9--1
+mytestlab123/fastqc:0.12.1--hdfd78af_0

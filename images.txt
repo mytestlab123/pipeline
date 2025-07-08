@@ -1,0 +1,8 @@
+quay.io/biocontainers/mulled-v2-1fa26d1ce03c295fe2fdcf85831a92fbcbd7e8c2:ded3841da0194af2701c780e9b3d653a85d27489-0
+community.wave.seqera.io/library/scanpy:1.10.2--e83da2205b92a538
+quay.io/biocontainers/star:2.7.10b--h9ee0642_0
+quay.io/biocontainers/multiqc:1.27--pyhdfd78af_0
+community.wave.seqera.io/library/scanpy:1.10.2--e83da2205b92a538
+docker.io/nfcore/anndatar:20241129
+quay.io/biocontainers/python:3.9--1
+quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0
