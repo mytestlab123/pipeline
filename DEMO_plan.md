@@ -1,8 +1,8 @@
 # Nextflow Offline Demo Plan
 
-**Date**: July 7, 2025 11:30 AM SGT  
-**Status**: Implementation phase - demo.sh redesign based on working S3 + Docker Hub architecture  
-**Solution**: Integrate proven online.sh and offline.sh approach into demo.sh
+**Date**: July 7, 2025 12:15 PM SGT  
+**Status**: ✅ Phase 1 COMPLETED - Phase 2 Planning for nf-core/sarek  
+**Solution**: Proven S3 + Docker Hub architecture working for nf-core/demo, extending to sarek
 
 ## Working Architecture Analysis
 
@@ -21,12 +21,17 @@ The **proven working approach** uses:
 - ✅ **offline-setup.sh** - Loads assets for offline execution (167 lines)
 - ✅ **run-offline-pipeline.sh** - Executes pipeline with offline flag (67 lines)
 
-### Key Fix Applied Today
-**pull-images.sh** was completely rewritten using the proven approach from user's working `copy.sh`:
-- Fixed file reading loop (was hanging)
-- Fixed tag parsing logic for images with/without tags
-- Added proper error handling and colored output
-- Now successfully processes images and handles skipping/copying
+### New Repository Setup Scripts (July 8, 2025)
+- ✅ **setup_repository_online.sh** - Automated image copying with configurable registry/namespace
+- ✅ **setup_repository_offline.sh** - Automated retagging and pulling for offline environment
+
+### Key Improvements Applied Today
+**Repository Setup Automation**:
+- Created `setup_repository_online.sh` for automated skopeo-based image copying
+- Created `setup_repository_offline.sh` for automated retagging and pulling
+- Configurable destination registry via `DEST_REGISTRY` and `DEST_NAMESPACE` variables
+- Simplified workflow: source file → copy images → destination file → retag/pull
+- Maintains compatibility with existing pipeline references
 
 ## Working Demo Architecture: Two-Machine S3 + Docker Hub Workflow
 
@@ -107,17 +112,32 @@ nextflow run offline/1_0_2/ -profile test,docker --input ./data_offline.csv --ou
 **Current**: Local directory operations  
 **Required**: S3 sync for real two-machine workflow
 
-## Success Criteria
+## Phase 1 Success Criteria: ✅ COMPLETED + ENHANCED
 
-The demo must prove: **"This pipeline can run completely offline using pre-downloaded assets"**
+**nf-core/demo offline workflow proven successful:**
 
 - ✅ Phase 1: All assets uploaded to S3 and containers mirrored to Docker Hub
 - ✅ Phase 2: Pipeline runs with `NXF_OFFLINE=true` using only S3 + Docker Hub assets  
 - ✅ No network calls during offline execution (except S3 download and Docker Hub pulls)
 - ✅ All containers sourced from mytestlab123 namespace with proper retagging
 - ✅ Complete pipeline execution without internet access on offline EC2
+- ✅ demo.sh online-only and offline-only modes working perfectly
+- ✅ Manual file copying and docker image handling validated
+- ✅ **NEW**: Repository setup automation with `setup_repository_online.sh` and `setup_repository_offline.sh`
 
 ## Manual Test Commands
+
+### Repository Setup Scripts (New)
+```bash
+# Online environment - copy images to Docker Hub
+./setup_repository_online.sh images.txt destination.txt
+
+# Offline environment - retag and pull images
+./setup_repository_offline.sh images.txt destination.txt
+
+# Custom registry/namespace
+DEST_REGISTRY=docker.io DEST_NAMESPACE=myorg ./setup_repository_online.sh
+```
 
 ### On Online EC2 (ip-10-0-17-169)
 ```bash
@@ -132,9 +152,89 @@ cd /home/ssm-user/pipe
 ./demo.sh offline-only
 ```
 
+---
+
+## Phase 2: nf-core/sarek Extension
+
+**Goal**: Extend proven offline workflow to nf-core/sarek using same architecture
+
+### Phase 2 Advantages
+
+**Small Test Data**: 
+- Uses official nf-core test FASTQ files (4 files, ~KB each)
+- Same data used by Sarek's CI: `https://raw.githubusercontent.com/nf-core/sarek/master/tests/csv/3.0/fastq_pair.csv`
+- Already processed with `build_offline_dataset.sh` → `samplesheet_offline.csv` ✅
+
+**Proven Architecture**:
+- Same demo.sh approach, just different variables
+- Same S3 + Docker Hub workflow  
+- Same helper scripts (no code changes needed)
+
+### Implementation Plan
+
+**Minimal Changes Required**:
+```bash
+# Only variable changes needed
+PIPE=nf-core/sarek
+VER=3.4.3  # Latest stable
+PROJECT_NAME=sarek
+```
+
+**Test Commands**:
+```bash
+# Online preparation
+PIPE=nf-core/sarek VER=3.4.3 PROJECT_NAME=sarek ./demo.sh online-only
+
+# Offline execution  
+PROJECT_NAME=sarek ./demo.sh offline-only
+```
+
+**Expected Differences**:
+- Container count: ~20-50 images vs 3 for demo
+- Mirror time: Longer (more containers)
+- Storage: Slightly larger (still minimal with test data)
+- Runtime: Similar workflow pattern
+
+### Phase 2 Progress: ✅ Basic Level Working
+
+**July 7, 2025 - Initial Sarek Testing**:
+- ✅ Small test data ready: `samplesheet_offline.csv` with 4 FASTQ files
+- ✅ Basic demo.sh architecture works for sarek at fundamental level
+- ⏳ Container mirroring optimization needed (20-50 images vs 3)
+- ⏳ Image copy, renaming, tagging activities need refinement
+- ⏳ Offline execution with `NXF_OFFLINE=true` - basic success
+
+**Tomorrow's Focus Areas**:
+- 🔧 **Image Copy Operations**: Optimize container mirroring for larger pipeline
+- 🔧 **Container Renaming**: Improve image name transformation logic
+- 🔧 **Tagging Activity**: Enhance retag_biocontainers.sh for sarek's containers
+- 🔧 **Performance**: Streamline workflow for 20-50 containers vs 3
+
+### Development Approach
+
+- **Keep it simple**: No additional error handling
+- **Reuse existing code**: Same proven scripts
+- **Small changes**: Only variables and sample sheet
+- **Easy troubleshooting**: Minimal complexity
+
+### Next Steps
+
+**Tomorrow (July 8, 2025)**:
+1. **Image Copy Optimization**: Refine copy.sh for larger container sets
+2. **Container Renaming Logic**: Improve name transformation for sarek images
+3. **Tagging Enhancement**: Update retag_biocontainers.sh for sarek-specific containers
+4. **Performance Tuning**: Optimize workflow for 20-50 containers
+
+**Future Work**:
+1. **GitHub Workflow**: Create Issue #13, Branch, PR #14 after optimization
+2. **Complete sarek**: Full offline workflow validation
+3. **Document results**: Update plan with optimization findings
+4. **Future pipelines**: Template for rnaseq, scrnaseq, etc.
+
 ## Current Test Environment
 - Working directory: `/home/ec2-user/git/mytestlab/pipeline`
 - `.env` file configured with Docker Hub credentials
 - Helper scripts: build_offline_dataset.sh, copy.sh, retag_biocontainers.sh
 - S3 bucket: `s3://lifebit-user-data-nextflow/pipe/`
 - Docker Hub namespace: `docker.io/mytestlab123/`
+- Test data: `samplesheet_offline.csv` ready for sarek ✅
